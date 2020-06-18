@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Container, Jumbotron, Row, Col } from 'react-bootstrap';
-import {TeleworkMap} from "./TeleworkMap";
+import {Footer} from "./Footer";
+import {MapView} from "./MapView";
 
 export interface HomePageProps { }
 
@@ -13,10 +14,8 @@ export class HomePage extends React.Component<HomePageProps, {}> {
                         <h1>SEPTA Future Telework Forecasting Tool</h1>
                     </Container>
                 </Jumbotron>
-                <Container fluid>
-                    <h3 className="mb-sm-4">Philadelphia Telework Forecasting Map</h3>
-                    <TeleworkMap />
-                </Container>
+                <MapView />
+                <Footer />
             </main>
         );
     }
