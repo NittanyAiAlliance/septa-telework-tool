@@ -1,0 +1,7 @@
+footer {
+    margin-top: 6rem;
+}
+.leaflet-container {
+    height: 80vh;
+    width: 100%;
+}
