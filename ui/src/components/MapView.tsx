@@ -3,8 +3,9 @@ import {Map as LeafletMap, GeoJSON, TileLayer} from 'react-leaflet';
 import * as regionData from '../../assets/PHL_ZIP.json';
 import * as limitData from '../../assets/PHL_LMT.json';
 import * as stopData from '../../assets/SEPTA_LINE.json';
+import * as censusData from '../../assets/PHL_CENSUS.json';
 import {Feature} from "geojson";
-import {Layer} from "leaflet";
+import {Layer, popup} from "leaflet";
 import {Col, Container, Row} from "react-bootstrap";
 import {MapControls} from "./MapControls";
 
@@ -13,7 +14,8 @@ export interface MapViewProps {}
 export class MapView extends React.Component<MapViewProps, {}> {
     state = {
         displayRegion : false,
-        displayTransit: false
+        displayTransit: false,
+        displayCensusTract: false
     }
     constructor(props: MapViewProps){
         super(props);
@@ -50,7 +52,12 @@ export class MapView extends React.Component<MapViewProps, {}> {
     }
 
     onEachTransitLineFeature(feature : Feature, layer : Layer) {
-        const popupContent = ` <Popup><p>Transit Line : ${feature.properties.LINE_NAME}</p></Popup>`;
+        const popupContent = ` <Popup><p>Transit Line : ${feature.properties.LINE_NAME}<pre/></p></Popup>`;
+        layer.bindPopup(popupContent);
+    }
+
+    onEachCensusFeature(feature : Feature, layer : Layer) {
+        const popupContent = ` <Popup><p>${feature.properties.NAMELSAD10}</pre></p></Popup>`;
         layer.bindPopup(popupContent);
     }
 
@@ -61,15 +68,17 @@ export class MapView extends React.Component<MapViewProps, {}> {
 
     toggleDisplayState(key: string, value: boolean) {
         if (key == "regions") {
-            console.log("updating region");
             this.setState({
                 displayRegion: value,
             });
         } else if (key == "transit"){
-            console.log("updating transit");
             this.setState({
                 displayTransit: value
             })
+        } else if (key == "census"){
+            this.setState({
+                displayCensusTract: value
+            });
         }
     }
 
@@ -80,23 +89,16 @@ export class MapView extends React.Component<MapViewProps, {}> {
             zoom : 10
         };
         const position = {lat: mapDefault.lat, lng: mapDefault.lng};
-        console.log(this.state.displayRegion);
         return (
             <Container fluid>
-                <h3 className="mb-sm-6">Philadelphia Telework Forecasting Map</h3>
-                <Row>
+                <Row className="mt-sm-4">
                     <Col sm={9}>
                         <LeafletMap center={position} zoom = {mapDefault.zoom}>
                             <TileLayer attribution='&amp;copy <a href="http://osm.org/copyright">OpenStreetMaps</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
                             <GeoJSON data={limitData as any} style={this.limitGeoJSONStyle} onEachFeature={this.onLimitFeature}/>
-                            {
-                                this.state.displayRegion &&
-                                <GeoJSON data={regionData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachRegionFeature} />
-                            }
-                            {
-                                this.state.displayTransit &&
-                                <GeoJSON data={stopData as any} style={this.transitGeoJSONStyle} onEachFeature={this.onEachTransitLineFeature} />
-                            }
+                            { this.state.displayRegion && <GeoJSON data={regionData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachRegionFeature} /> }
+                            { this.state.displayTransit && <GeoJSON data={stopData as any} style={this.transitGeoJSONStyle} onEachFeature={this.onEachTransitLineFeature} /> }
+                            { this.state.displayCensusTract && <GeoJSON data={censusData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> }
                         </LeafletMap>
                     </Col>
                     <Col sm={3}>
