@@ -5,3 +5,12 @@ footer {
     height: 80vh;
     width: 100%;
 }
+
+.jumbotron {
+    margin-bottom: 0;
+}
+
+.top-bottom-grey-border{
+    border-top: #808080 solid 1px;
+    border-bottom: #808080 solid 1px;
+}
