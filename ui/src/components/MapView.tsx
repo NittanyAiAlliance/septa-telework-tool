@@ -109,7 +109,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         for(let i : number = 0; i < this.state.displayedRoutes.length; i++) {
             let thisRoute = this.state.displayedRoutes[i];
             if(thisRoute.name == routeName){
-                fetch('/ui/assets/routes/' + thisRoute.name + '.geojson')
+                fetch('/assets/routes/' + thisRoute.name + '.geojson')
                     .then(response => response.json())
                     .then( data => {
                         let displayedRoutes = [...this.state.displayedRoutes];
