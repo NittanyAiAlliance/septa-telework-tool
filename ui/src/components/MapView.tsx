@@ -2,24 +2,47 @@ import * as React from 'react';
 import {Map as LeafletMap, GeoJSON, TileLayer} from 'react-leaflet';
 import * as regionData from '../../assets/PHL_ZIP.json';
 import * as limitData from '../../assets/PHL_LMT.json';
-import * as stopData from '../../assets/SEPTA_LINE.json';
 import * as censusData from '../../assets/PHL_CENSUS.json';
 import {Feature} from "geojson";
 import {Layer, popup} from "leaflet";
 import {Col, Container, Row} from "react-bootstrap";
 import {MapControls} from "./MapControls";
+import * as routes from '../../assets/PHL_ROUTES.json';
+
+export interface TransitRoute {
+    name : string,
+    data : object,
+    visible : boolean;
+}
 
 export interface MapViewProps {}
+export interface MapViewState {
+    displayRegion : boolean,
+    displayTransit: boolean,
+    displayCensusTract: boolean,
+    displayedRoutes : TransitRoute[]
+}
 
-export class MapView extends React.Component<MapViewProps, {}> {
+
+export class MapView extends React.Component<MapViewProps, MapViewState> {
     state = {
-        displayRegion : false,
-        displayTransit: false,
-        displayCensusTract: false
-    }
+        displayRegion: false,
+        displayTransit : false,
+        displayCensusTract : false,
+        displayedRoutes : [] as TransitRoute[]
+    } as MapViewState;
+
     constructor(props: MapViewProps){
         super(props);
         this.toggleDisplayState=this.toggleDisplayState.bind(this);
+        this.handleRouteOverlayUpdate = this.handleRouteOverlayUpdate.bind(this);
+        routes["bus-routes"].forEach((route) => {
+            this.state.displayedRoutes.push({
+                name : route,
+                visible : false,
+                data : {}
+            } as TransitRoute);
+        });
     }
 
     regionGeoJSONStyle(feature : Feature) {
@@ -33,7 +56,7 @@ export class MapView extends React.Component<MapViewProps, {}> {
 
     transitGeoJSONStyle(feature : Feature){
         return {
-            color : feature.properties.COLOR,
+            color : feature.properties.stroke,
             weight : 5
         }
     }
@@ -82,6 +105,26 @@ export class MapView extends React.Component<MapViewProps, {}> {
         }
     }
 
+    async handleRouteOverlayUpdate(routeName : string, newIsVisible : boolean) {
+        for(let i : number = 0; i < this.state.displayedRoutes.length; i++) {
+            let thisRoute = this.state.displayedRoutes[i];
+            if(thisRoute.name == routeName){
+                fetch('/ui/assets/routes/' + thisRoute.name + '.geojson')
+                    .then(response => response.json())
+                    .then( data => {
+                        let displayedRoutes = [...this.state.displayedRoutes];
+                        displayedRoutes[i] = {
+                            name : routeName,
+                            visible : newIsVisible,
+                            data : data
+                        } as TransitRoute;
+                        this.setState({displayedRoutes : displayedRoutes})
+                        console.log(this.state.displayedRoutes);
+                    });
+            }
+        }
+    }
+
     render() {
         const mapDefault = {
             lat : 39.9526,
@@ -89,6 +132,12 @@ export class MapView extends React.Component<MapViewProps, {}> {
             zoom : 10
         };
         const position = {lat: mapDefault.lat, lng: mapDefault.lng};
+        const displayedRoutes = [];
+        for(const [index, value] of this.state.displayedRoutes.entries()){
+            if(value.visible){
+                displayedRoutes.push(<GeoJSON data={value.data as any} style={this.transitGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> );
+            }
+        }
         return (
             <Container fluid>
                 <Row className="mt-sm-4">
@@ -97,12 +146,12 @@ export class MapView extends React.Component<MapViewProps, {}> {
                             <TileLayer attribution='&amp;copy <a href="http://osm.org/copyright">OpenStreetMaps</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
                             <GeoJSON data={limitData as any} style={this.limitGeoJSONStyle} onEachFeature={this.onLimitFeature}/>
                             { this.state.displayRegion && <GeoJSON data={regionData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachRegionFeature} /> }
-                            { this.state.displayTransit && <GeoJSON data={stopData as any} style={this.transitGeoJSONStyle} onEachFeature={this.onEachTransitLineFeature} /> }
                             { this.state.displayCensusTract && <GeoJSON data={censusData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> }
+                            {displayedRoutes}
                         </LeafletMap>
                     </Col>
                     <Col sm={3}>
-                        <MapControls onDisplayChange={this.toggleDisplayState}/>
+                        <MapControls onDisplayChange={this.toggleDisplayState} onRouteOverlayChange={this.handleRouteOverlayUpdate}/>
                     </Col>
                 </Row>
             </Container>
