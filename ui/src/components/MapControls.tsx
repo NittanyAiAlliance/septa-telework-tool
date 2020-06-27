@@ -17,7 +17,7 @@ export class MapControls extends React.Component<MapControlsProps, {}> {
                     <DisplayOverlaySwitch title="Regions" name="regions" onChange={this.props.onDisplayChange} />
                     <DisplayOverlaySwitch title="Transit Lines" name="transit" onChange={this.props.onDisplayChange} />
                     <DisplayOverlaySwitch title="Census Tracts" name="census" onChange={this.props.onDisplayChange} />
-                    <TransitOverlaySelector onUpdate={this.props.onRouteOverlayChange}/>
+                    <TransitOverlaySelector onOverlayUpdate={this.props.onRouteOverlayChange} />
                 </Form>
             </Container>
         );
