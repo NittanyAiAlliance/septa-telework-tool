@@ -4,7 +4,7 @@ import { Button, Modal, Container } from 'react-bootstrap';
 import {DisplayOverlaySwitch} from "./DisplayOverlaySwitch";
 
 export interface TransitOverlayModalProps {
-    onUpdate(routeName : string, newIsVisible : boolean) : any,
+    onOverlayUpdate(routeName : string, newIsVisible : boolean) : any,
 }
 
 export class TransitOverlaySelector extends React.Component<TransitOverlayModalProps, {showModal : boolean}> {
@@ -16,6 +16,7 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
         super(props);
         this.openModal=this.openModal.bind(this);
         this.closeModal=this.closeModal.bind(this);
+        this.handleUpdateRoute=this.handleUpdateRoute.bind(this);
     }
 
     openModal(){
@@ -27,7 +28,7 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
     }
 
     handleUpdateRoute(key : string, value : boolean) {
-        this.props.onUpdate(key, value);
+        this.props.onOverlayUpdate(key, value);
     }
 
     render() {
@@ -38,7 +39,7 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
                 <Button onClick={this.openModal}>
                     Select Routes
                 </Button>
-                <Modal show={this.state.showModal} onHide={this.closeModal}>
+                <Modal size="lg" show={this.state.showModal} onHide={this.closeModal}>
                     <Modal.Header closeButton>
                         <Modal.Title>Select Transit Route Overlays</Modal.Title>
                     </Modal.Header>
