@@ -7,17 +7,23 @@ export interface TransitOverlayModalProps {
     onUpdate(routeName : string, newIsVisible : boolean) : any,
 }
 
-export class TransitOverlaySelector extends React.Component<TransitOverlayModalProps, {}> {
+export class TransitOverlaySelector extends React.Component<TransitOverlayModalProps, {showModal : boolean}> {
     state = {
-        showModal : false,
+        showModal : false
     };
+
+    constructor(props : TransitOverlayModalProps){
+        super(props);
+        this.openModal=this.openModal.bind(this);
+        this.closeModal=this.closeModal.bind(this);
+    }
 
     openModal(){
         this.setState({showModal : true});
     }
 
     closeModal(){
-        this.setState({showModal : true});
+        this.setState({showModal : false});
     }
 
     handleUpdateRoute(key : string, value : boolean) {
