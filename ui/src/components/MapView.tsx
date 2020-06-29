@@ -79,6 +79,11 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         }
     }
 
+    /**
+     * Assign a popup to display the zip code for each region feature
+     * @param feature
+     * @param layer
+     */
     onEachRegionFeature(feature : Feature, layer : Layer) {
         const popupContent = ` <Popup><p>Zip Code: ${feature.properties.CODE}</pre></Popup>`;
         layer.bindPopup(popupContent);
@@ -151,7 +156,12 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                         data={value.data as any}
                         style={this.transitGeoJSONStyle}
                         onEachFeature={(feature : Feature, layer : Layer) => {
-                            const popupContent = ` <Popup><p>${value.type.toUpperCase()}: ${value.name}<pre/></p></Popup>`;
+                            const formattedTransitType = value.type.charAt(0).toUpperCase() + value.type.slice(1);
+                            const popupContent = `
+                                <Popup>
+                                    <h6 class="text-center">${formattedTransitType}</p>
+                                    <h4 class="text-center">${value.name}</h4>
+                                </Popup>`;
                             layer.bindPopup(popupContent);
                         }}
                     />
@@ -175,7 +185,6 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                     </Col>
                 </Row>
             </Container>
-
         );
     }
 }
