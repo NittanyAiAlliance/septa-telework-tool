@@ -12,7 +12,8 @@ import * as routes from '../../assets/PHL_ROUTES.json';
 export interface TransitRoute {
     name : string,
     data : object,
-    visible : boolean;
+    visible : boolean,
+    type : string
 }
 
 export interface MapViewProps {}
@@ -27,7 +28,7 @@ export interface MapViewState {
 export class MapView extends React.Component<MapViewProps, MapViewState> {
     state = {
         displayRegion: false,
-        displayTransit : false,
+        displayTransit : true,
         displayCensusTract : false,
         displayedRoutes : [] as TransitRoute[]
     } as MapViewState;
@@ -40,8 +41,17 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
             this.state.displayedRoutes.push({
                 name : route,
                 visible : false,
-                data : {}
+                data : {},
+                type : "bus"
             } as TransitRoute);
+        });
+        routes["train-routes"].forEach((route) => {
+            this.state.displayedRoutes.push({
+                name : route,
+                visible : false,
+                data : {},
+                type : "train"
+            });
         });
     }
 
@@ -116,7 +126,8 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                         displayedRoutes[i] = {
                             name : routeName,
                             visible : newIsVisible,
-                            data : data
+                            data : data,
+                            type : thisRoute.type
                         } as TransitRoute;
                         this.setState({displayedRoutes : displayedRoutes})
                         console.log(this.state.displayedRoutes);
@@ -135,7 +146,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         const displayedRoutes = [];
         for(const [index, value] of this.state.displayedRoutes.entries()){
             if(value.visible) {
-                displayedRoutes.push(<GeoJSON data={value.data as any} style={this.transitGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> );
+                displayedRoutes.push( <GeoJSON data={value.data as any} style={this.transitGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> );
             }
         }
         return (

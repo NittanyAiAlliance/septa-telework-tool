@@ -34,9 +34,17 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
     }
 
     render() {
+        console.log(this.props.displayedRoutes.length);
         const busRoutes = [];
+        const trainRoutes = [];
         for(const [index, value] of this.props.displayedRoutes.entries()){
-            busRoutes.push(<DisplayOverlaySwitch title={value.name} name={value.name} onChange={this.handleUpdateRoute} checked={value.visible} />);
+            const routeDisplaySwitch = <DisplayOverlaySwitch title={value.name} name={value.name} onChange={this.handleUpdateRoute} checked={value.visible} />
+            if(value.type == "bus"){
+                busRoutes.push(routeDisplaySwitch);
+            } else if(value.type == "train"){
+                trainRoutes.push(routeDisplaySwitch);
+            }
+
         }
         return (
             <div>
@@ -51,6 +59,10 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
                         <Container fluid>
                             <h1>Bus Routes:</h1>
                             { busRoutes }
+                        </Container>
+                        <Container fluid>
+                            <h2>Train Routes:</h2>
+                            { trainRoutes }
                         </Container>
                     </Modal.Body>
                 </Modal>
