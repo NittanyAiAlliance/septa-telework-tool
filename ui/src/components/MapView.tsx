@@ -146,7 +146,16 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         const displayedRoutes = [];
         for(const [index, value] of this.state.displayedRoutes.entries()){
             if(value.visible) {
-                displayedRoutes.push( <GeoJSON data={value.data as any} style={this.transitGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> );
+                const transitLineOverlay =
+                    <GeoJSON
+                        data={value.data as any}
+                        style={this.transitGeoJSONStyle}
+                        onEachFeature={(feature : Feature, layer : Layer) => {
+                            const popupContent = ` <Popup><p>${value.type.toUpperCase()}: ${value.name}<pre/></p></Popup>`;
+                            layer.bindPopup(popupContent);
+                        }}
+                    />
+                displayedRoutes.push(transitLineOverlay);
             }
         }
         return (
