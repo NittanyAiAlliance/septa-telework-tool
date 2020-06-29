@@ -134,7 +134,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         const position = {lat: mapDefault.lat, lng: mapDefault.lng};
         const displayedRoutes = [];
         for(const [index, value] of this.state.displayedRoutes.entries()){
-            if(value.visible){
+            if(value.visible) {
                 displayedRoutes.push(<GeoJSON data={value.data as any} style={this.transitGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> );
             }
         }
@@ -147,11 +147,11 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                             <GeoJSON data={limitData as any} style={this.limitGeoJSONStyle} onEachFeature={this.onLimitFeature}/>
                             { this.state.displayRegion && <GeoJSON data={regionData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachRegionFeature} /> }
                             { this.state.displayCensusTract && <GeoJSON data={censusData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> }
-                            {displayedRoutes}
+                            { this.state.displayTransit && displayedRoutes }
                         </LeafletMap>
                     </Col>
                     <Col sm={3}>
-                        <MapControls onDisplayChange={this.toggleDisplayState} onRouteOverlayChange={this.handleRouteOverlayUpdate}/>
+                        <MapControls onDisplayChange={this.toggleDisplayState} onRouteOverlayChange={this.handleRouteOverlayUpdate} displayedRoutes={this.state.displayedRoutes}/>
                     </Col>
                 </Row>
             </Container>

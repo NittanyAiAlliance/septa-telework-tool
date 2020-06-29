@@ -5,6 +5,7 @@ export interface DisplayOverlaySwitchProps {
     title : string;
     name: string;
     onChange(key: string, value: boolean) : any;
+    checked? : boolean;
 }
 
 export class DisplayOverlaySwitch extends React.Component<DisplayOverlaySwitchProps, {}> {
@@ -25,7 +26,7 @@ export class DisplayOverlaySwitch extends React.Component<DisplayOverlaySwitchPr
     render(){
         const titleLabel : string = "Show " + this.props.title;
         return (
-            <Form.Check type="switch" label={titleLabel} id={this.props.title} onChange={this.handleToggle} />
+            <Form.Check type="switch" label={titleLabel} id={this.props.title} onChange={this.handleToggle} checked={this.props.checked} />
         );
     }
 }
