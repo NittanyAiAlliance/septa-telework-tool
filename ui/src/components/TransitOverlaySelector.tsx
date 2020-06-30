@@ -21,11 +21,11 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
         this.handleUpdateRoute=this.handleUpdateRoute.bind(this);
     }
 
-    openModal(){
+    openModal() {
         this.setState({showModal : true});
     }
 
-    closeModal(){
+    closeModal() {
         this.setState({showModal : false});
     }
 
