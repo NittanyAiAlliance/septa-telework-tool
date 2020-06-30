@@ -12,7 +12,8 @@ import * as routes from '../../assets/PHL_ROUTES.json';
 export interface TransitRoute {
     name : string,
     data : object,
-    visible : boolean;
+    visible : boolean,
+    type : string
 }
 
 export interface MapViewProps {}
@@ -27,7 +28,7 @@ export interface MapViewState {
 export class MapView extends React.Component<MapViewProps, MapViewState> {
     state = {
         displayRegion: false,
-        displayTransit : false,
+        displayTransit : true,
         displayCensusTract : false,
         displayedRoutes : [] as TransitRoute[]
     } as MapViewState;
@@ -40,8 +41,17 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
             this.state.displayedRoutes.push({
                 name : route,
                 visible : false,
-                data : {}
+                data : {},
+                type : "bus"
             } as TransitRoute);
+        });
+        routes["train-routes"].forEach((route) => {
+            this.state.displayedRoutes.push({
+                name : route,
+                visible : false,
+                data : {},
+                type : "train"
+            });
         });
     }
 
@@ -69,6 +79,11 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         }
     }
 
+    /**
+     * Assign a popup to display the zip code for each region feature
+     * @param feature
+     * @param layer
+     */
     onEachRegionFeature(feature : Feature, layer : Layer) {
         const popupContent = ` <Popup><p>Zip Code: ${feature.properties.CODE}</pre></Popup>`;
         layer.bindPopup(popupContent);
@@ -116,7 +131,8 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                         displayedRoutes[i] = {
                             name : routeName,
                             visible : newIsVisible,
-                            data : data
+                            data : data,
+                            type : thisRoute.type
                         } as TransitRoute;
                         this.setState({displayedRoutes : displayedRoutes})
                         console.log(this.state.displayedRoutes);
@@ -134,8 +150,22 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         const position = {lat: mapDefault.lat, lng: mapDefault.lng};
         const displayedRoutes = [];
         for(const [index, value] of this.state.displayedRoutes.entries()){
-            if(value.visible){
-                displayedRoutes.push(<GeoJSON data={value.data as any} style={this.transitGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> );
+            if(value.visible) {
+                const transitLineOverlay =
+                    <GeoJSON
+                        data={value.data as any}
+                        style={this.transitGeoJSONStyle}
+                        onEachFeature={(feature : Feature, layer : Layer) => {
+                            const formattedTransitType = value.type.charAt(0).toUpperCase() + value.type.slice(1);
+                            const popupContent = `
+                                <Popup>
+                                    <h6 class="text-center">${formattedTransitType}</p>
+                                    <h4 class="text-center">${value.name}</h4>
+                                </Popup>`;
+                            layer.bindPopup(popupContent);
+                        }}
+                    />
+                displayedRoutes.push(transitLineOverlay);
             }
         }
         return (
@@ -147,15 +177,14 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                             <GeoJSON data={limitData as any} style={this.limitGeoJSONStyle} onEachFeature={this.onLimitFeature}/>
                             { this.state.displayRegion && <GeoJSON data={regionData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachRegionFeature} /> }
                             { this.state.displayCensusTract && <GeoJSON data={censusData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> }
-                            {displayedRoutes}
+                            { this.state.displayTransit && displayedRoutes }
                         </LeafletMap>
                     </Col>
                     <Col sm={3}>
-                        <MapControls onDisplayChange={this.toggleDisplayState} onRouteOverlayChange={this.handleRouteOverlayUpdate}/>
+                        <MapControls onDisplayChange={this.toggleDisplayState} onRouteOverlayChange={this.handleRouteOverlayUpdate} displayedRoutes={this.state.displayedRoutes}/>
                     </Col>
                 </Row>
             </Container>
-
         );
     }
 }

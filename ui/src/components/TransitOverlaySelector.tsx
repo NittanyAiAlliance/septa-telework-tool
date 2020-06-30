@@ -1,15 +1,17 @@
 import * as React from 'react';
-import * as routes from '../../assets/PHL_ROUTES.json';
 import { Button, Modal, Container } from 'react-bootstrap';
 import {DisplayOverlaySwitch} from "./DisplayOverlaySwitch";
+import {TransitRoute} from "./MapView";
+import {GeoJSON} from "react-leaflet";
 
 export interface TransitOverlayModalProps {
     onOverlayUpdate(routeName : string, newIsVisible : boolean) : any,
+    displayedRoutes : TransitRoute[]
 }
 
 export class TransitOverlaySelector extends React.Component<TransitOverlayModalProps, {showModal : boolean}> {
     state = {
-        showModal : false
+        showModal : false,
     };
 
     constructor(props : TransitOverlayModalProps){
@@ -19,11 +21,11 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
         this.handleUpdateRoute=this.handleUpdateRoute.bind(this);
     }
 
-    openModal(){
+    openModal() {
         this.setState({showModal : true});
     }
 
-    closeModal(){
+    closeModal() {
         this.setState({showModal : false});
     }
 
@@ -32,8 +34,18 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
     }
 
     render() {
-        const busRoutes = routes["bus-routes"];
-        const trainRoutes = routes["train-routes"];
+        console.log(this.props.displayedRoutes.length);
+        const busRoutes = [];
+        const trainRoutes = [];
+        for(const [index, value] of this.props.displayedRoutes.entries()){
+            const routeDisplaySwitch = <DisplayOverlaySwitch title={value.name} name={value.name} onChange={this.handleUpdateRoute} checked={value.visible} />
+            if(value.type == "bus"){
+                busRoutes.push(routeDisplaySwitch);
+            } else if(value.type == "train"){
+                trainRoutes.push(routeDisplaySwitch);
+            }
+
+        }
         return (
             <div>
                 <Button onClick={this.openModal}>
@@ -46,17 +58,11 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
                     <Modal.Body>
                         <Container fluid>
                             <h1>Bus Routes:</h1>
-                            {
-                                busRoutes.map((value : string, index : number) => {
-                                    return <DisplayOverlaySwitch title={value} name={value} onChange={this.handleUpdateRoute} />;
-                                })
-                            }
-                            <h1>Train Routes:</h1>
-                            {
-                                trainRoutes.map((value : string, index : number) => {
-                                    return <DisplayOverlaySwitch title={value} name={value} onChange={this.handleUpdateRoute} />
-                                })
-                            }
+                            { busRoutes }
+                        </Container>
+                        <Container fluid>
+                            <h2>Train Routes:</h2>
+                            { trainRoutes }
                         </Container>
                     </Modal.Body>
                 </Modal>
