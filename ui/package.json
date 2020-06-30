@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@types/geojson": "^7946.0.7",
+    "@types/jsts": "^0.17.3",
     "@types/lodash": "^4.14.155",
     "@types/react-bootstrap": "^1.0.1",
     "@types/react-leaflet": "^2.5.1",
@@ -28,6 +29,7 @@
     "@types/react-router-dom": "^5.1.5",
     "bootstrap": "^4.5.0",
     "jquery": "^3.5.1",
+    "jsts": "^2.3.0",
     "leaflet": "^1.6.0",
     "popper.js": "^1.16.1",
     "react": "^16.13.1",
