@@ -2,12 +2,12 @@ import * as React from 'react';
 import {Map as LeafletMap, GeoJSON, TileLayer} from 'react-leaflet';
 import * as regionData from '../../assets/PHL_ZIP.json';
 import * as limitData from '../../assets/PHL_LMT.json';
-import {Feature} from "geojson";
+import {Feature, FeatureCollection} from "geojson";
 import {Layer, popup} from "leaflet";
 import {Col, Container, Row} from "react-bootstrap";
 import {MapControls} from "./MapControls";
 import * as routes from '../../assets/PHL_ROUTES.json';
-import * as jsts from 'jsts';
+import {polygon, lineString, lineIntersect} from '@turf/turf';
 
 export interface TransitRoute {
     name : string,
@@ -87,15 +87,15 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         layer.bindPopup(popupContent);
         layer.on({
             click: () => {
-                let geoJsonReader = new jsts.io.GeoJSONReader();
-                let censusTract = geoJsonReader.read(JSON.stringify(feature));
-                for(const[index, value] of this.state.displayedRoutes.entries()){
-                    if(value.data){
-                        //This one is already visible and the data is there
-                    } else {
-
+                console.log(feature);
+                let censusTract = polygon((feature as any).geometry.coordinates);
+                this.state.displayedRoutes.forEach((route) => {
+                    let thisRoute = lineString(((route.data as any).features[0] as any).geometry.coordinates);
+                    const intersectionValue = lineIntersect(thisRoute, censusTract as any);
+                    if(intersectionValue.features.length > 0){
+                        console.log("Census tract " + feature.properties.NAMELSAD10 + " intersects with " + route.name);
                     }
-                }
+                });
             }
         });
     }
@@ -135,18 +135,14 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         for(let i : number = 0; i < this.state.displayedRoutes.length; i++) {
             let thisRoute = this.state.displayedRoutes[i];
             if(thisRoute.name == routeName){
-                fetch('/ui/assets/routes/' + thisRoute.name + '.geojson')
-                    .then(response => response.json())
-                    .then( data => {
-                        let displayedRoutes = [...this.state.displayedRoutes];
-                        displayedRoutes[i] = {
-                            name : routeName,
-                            visible : newIsVisible,
-                            data : data,
-                            type : thisRoute.type
-                        } as TransitRoute;
-                        this.setState({displayedRoutes : displayedRoutes})
-                    });
+                let displayedRoutes = [...this.state.displayedRoutes];
+                displayedRoutes[i] = {
+                    name : routeName,
+                    visible : newIsVisible,
+                    data : thisRoute.data,
+                    type : thisRoute.type
+                } as TransitRoute;
+                this.setState({displayedRoutes : displayedRoutes})
             }
         }
     }
