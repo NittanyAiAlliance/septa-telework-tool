@@ -2,12 +2,14 @@ import * as React from 'react';
 import {Map as LeafletMap, GeoJSON, TileLayer} from 'react-leaflet';
 import * as regionData from '../../assets/PHL_ZIP.json';
 import * as limitData from '../../assets/PHL_LMT.json';
-import {Feature, FeatureCollection} from "geojson";
-import {Layer, popup} from "leaflet";
-import {Col, Container, Row} from "react-bootstrap";
+import {Feature} from "geojson";
+import {Layer} from "leaflet";
+import {Col, Container, Row, Modal} from "react-bootstrap";
 import {MapControls} from "./MapControls";
 import * as routes from '../../assets/PHL_ROUTES.json';
 import {polygon, lineString, lineIntersect} from '@turf/turf';
+import {CensusTractDetailModal} from "./CensusTractDetailModal";
+import {CensusTract} from "../types/CensusTract";
 
 export interface TransitRoute {
     name : string,
@@ -21,7 +23,9 @@ export interface MapViewState {
     displayRegion : boolean,
     displayTransit: boolean,
     censusTractData : any,
-    displayedRoutes : TransitRoute[]
+    displayedRoutes : TransitRoute[],
+    showCensusTractDetails : boolean,
+    selectedCensusTract : CensusTract
 }
 
 
@@ -30,7 +34,8 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         displayRegion: false,
         displayTransit : true,
         censusTractData : null,
-        displayedRoutes : [] as TransitRoute[]
+        displayedRoutes : [] as TransitRoute[],
+        showCensusTractDetails : false
     } as MapViewState;
 
     constructor(props: MapViewProps){
@@ -87,15 +92,23 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         layer.bindPopup(popupContent);
         layer.on({
             click: () => {
-                console.log(feature);
                 let censusTract = polygon((feature as any).geometry.coordinates);
+                const intersectingRoutes = [] as TransitRoute[];
                 this.state.displayedRoutes.forEach((route) => {
                     let thisRoute = lineString(((route.data as any).features[0] as any).geometry.coordinates);
                     const intersectionValue = lineIntersect(thisRoute, censusTract as any);
                     if(intersectionValue.features.length > 0){
+                        //This route intersects the census tract, push it to the array of intersecting routes
+                        intersectingRoutes.push(route);
                         console.log("Census tract " + feature.properties.NAMELSAD10 + " intersects with " + route.name);
                     }
                 });
+                this.state.selectedCensusTract = {
+                    name : feature.properties.NAMELSAD10,
+                    feature : feature,
+                    intersectingRoutes : intersectingRoutes
+                }
+                this.setState({showCensusTractDetails : true});
             }
         });
     }
@@ -180,6 +193,18 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         });
     }
 
+    showCensusTractDetails(){
+        this.setState({
+            showCensusTractDetails : true
+        });
+    }
+
+    hideCensusTractDetails(){
+        this.setState({
+            showCensusTractDetails : false
+        });
+    }
+
     render() {
         const mapDefault = {
             lat : 39.9526,
@@ -232,6 +257,9 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                         <MapControls onDisplayChange={this.toggleDisplayState} onRouteOverlayChange={this.handleRouteOverlayUpdate} displayedRoutes={this.state.displayedRoutes}/>
                     </Col>
                 </Row>
+                {
+                    this.state.showCensusTractDetails && <CensusTractDetailModal onClose={() => { this.setState({showCensusTractDetails : false})}} censusTract={this.state.selectedCensusTract}/>
+                }
             </Container>
         );
     }
