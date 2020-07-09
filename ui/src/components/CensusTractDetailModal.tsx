@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {Modal, Row, Col, Container, Form} from 'react-bootstrap';
 import {TransitRoute} from "./MapView";
-import {GeoJSON, Map as LeafletMap, TileLayer} from "react-leaflet";
+import {GeoJSON, Map as LeafletMap, Marker, Popup, TileLayer} from "react-leaflet";
 import {CensusTract} from "../types/CensusTract";
 import {Feature} from "geojson";
 import {latLng, Layer} from "leaflet";
@@ -9,6 +9,7 @@ import {DisplayOverlaySwitch} from "./DisplayOverlaySwitch";
 import {createRef} from "react";
 import {bbox} from "@turf/turf";
 import {ExternalDataManager} from "../managers/ExternalDataManager";
+import {TransitStop} from "../types/TransitStop";
 
 
 export interface CensusTractDetailModalProps {
@@ -22,7 +23,8 @@ export interface CensusTractDetailModalState {
     displayedRoutes : TransitRoute[],
     show : boolean,
     featureBounds : any //LatLngTuple,
-    modalReady : boolean
+    modalReady : boolean,
+    showStops : boolean
 }
 
 export class CensusTractDetailModal extends React.Component<CensusTractDetailModalProps, CensusTractDetailModalState> {
@@ -31,35 +33,52 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
     constructor(props : CensusTractDetailModalProps){
         super(props);
         this.handleRouteVisibleToggle = this.handleRouteVisibleToggle.bind(this);
+        this.handleStopVisibleToggle = this.handleStopVisibleToggle.bind(this);
         const bboxArray = bbox(this.props.censusTract.feature);
         const latMid = (bboxArray[3] - bboxArray[1]) / 2 + bboxArray[1];
-        console.log(latMid);
         const lngMid = (bboxArray[2] - bboxArray[0]) / 2 + bboxArray[0];
-        console.log(lngMid);
         this.state = {
             displayedRoutes : this.props.censusTract.intersectingRoutes,
             show : this.props.show,
             featureBounds : {lat : latMid, lng : lngMid},
-            modalReady : false
+            modalReady : false,
+            showStops : false
         }
     }
 
-    handleRouteVisibleToggle(route : string, isVisible : boolean) {
-        this.state.displayedRoutes.forEach( (thisRoute : TransitRoute, i : number) => {
+    async handleRouteVisibleToggle(route : string, isVisible : boolean) {
+        for (const thisRoute of this.state.displayedRoutes) {
+            let i: number = this.state.displayedRoutes.indexOf(thisRoute);
             if(thisRoute.name == route){
-                const externalDataManager : ExternalDataManager = new ExternalDataManager();
-                externalDataManager.getRouteStops(route).then((stops) => {
-                    let displayedRoutes = [...this.state.displayedRoutes];
-                    displayedRoutes[i] = {
-                        name : route,
-                        visible : isVisible,
-                        data : thisRoute.data,
-                        type : thisRoute.type,
-                        stops : stops
-                    } as TransitRoute;
-                    this.setState({displayedRoutes : displayedRoutes})
+                fetch('/ui/assets/stops/' + thisRoute.name + '.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        const stops : TransitStop[] = [];
+                        for (const stop of data) {
+                            stops.push({
+                                route : thisRoute.name,
+                                lat : stop.lat,
+                                lng : stop.lng,
+                                name : stop.stopname
+                            } as TransitStop );
+                        }
+                        let displayedRoutes = [...this.state.displayedRoutes];
+                        displayedRoutes[i] = {
+                            name : route,
+                            visible : isVisible,
+                            data : thisRoute.data,
+                            type : thisRoute.type,
+                            stops : stops
+                        } as TransitRoute;
+                        this.setState({displayedRoutes : displayedRoutes});
                 });
             }
+        }
+    }
+
+    handleStopVisibleToggle(option : string, newValue : boolean){
+        this.setState({
+            showStops : newValue
         });
     }
 
@@ -103,6 +122,15 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
                         }}
                     />
                 );
+                if(this.state.showStops){
+                    route.stops.forEach((stop) => {
+                        intersectingRoutesData.push(
+                            <Marker position={[stop.lat, stop.lng]}>
+                                <Popup>{stop.name}</Popup>
+                            </Marker>
+                        )
+                    });
+                }
             }
             intersectingRoutesSwitch.push(
                 <DisplayOverlaySwitch name={route.name} title={route.name} onChange={this.handleRouteVisibleToggle} checked={route.visible}/>
@@ -145,6 +173,14 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
                             <Container fluid>
                                 <Form>
                                     { intersectingRoutesSwitch }
+                                </Form>
+                            </Container>
+                            <Container fluid>
+                                <h5>Options: </h5>
+                            </Container>
+                            <Container fluid>
+                                <Form>
+                                    <DisplayOverlaySwitch title={"Stops"} name={"stop-toggle"} onChange={this.handleStopVisibleToggle} />
                                 </Form>
                             </Container>
                         </Col>
