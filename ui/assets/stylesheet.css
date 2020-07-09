@@ -1,10 +1,6 @@
 footer {
     margin-top: 6rem;
 }
-.leaflet-container {
-    height: 80vh;
-    width: 100%;
-}
 
 .jumbotron {
     margin-bottom: 0;
@@ -13,4 +9,9 @@ footer {
 .top-bottom-grey-border{
     border-top: #808080 solid 1px;
     border-bottom: #808080 solid 1px;
+}
+
+.modal-80w {
+    width: 80vw;
+    max-width: 80vw !important;
 }
