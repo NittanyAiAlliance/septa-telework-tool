@@ -2,26 +2,32 @@ import * as React from 'react';
 import {Map as LeafletMap, GeoJSON, TileLayer} from 'react-leaflet';
 import * as regionData from '../../assets/PHL_ZIP.json';
 import * as limitData from '../../assets/PHL_LMT.json';
-import * as censusData from '../../assets/PHL_CENSUS.json';
 import {Feature} from "geojson";
-import {Layer, popup} from "leaflet";
-import {Col, Container, Row} from "react-bootstrap";
+import {Layer} from "leaflet";
+import {Col, Container, Row, Modal} from "react-bootstrap";
 import {MapControls} from "./MapControls";
 import * as routes from '../../assets/PHL_ROUTES.json';
+import {polygon, lineString, lineIntersect} from '@turf/turf';
+import {CensusTractDetailModal} from "./CensusTractDetailModal";
+import {CensusTract} from "../types/CensusTract";
+import {TransitStop} from "../types/TransitStop";
 
 export interface TransitRoute {
     name : string,
     data : object,
     visible : boolean,
-    type : string
+    type : string,
+    stops? : TransitStop[]
 }
 
 export interface MapViewProps {}
 export interface MapViewState {
     displayRegion : boolean,
     displayTransit: boolean,
-    displayCensusTract: boolean,
-    displayedRoutes : TransitRoute[]
+    censusTractData : any,
+    displayedRoutes : TransitRoute[],
+    showCensusTractDetails : boolean,
+    selectedCensusTract : CensusTract
 }
 
 
@@ -29,30 +35,16 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
     state = {
         displayRegion: false,
         displayTransit : true,
-        displayCensusTract : false,
-        displayedRoutes : [] as TransitRoute[]
+        censusTractData : null,
+        displayedRoutes : [] as TransitRoute[],
+        showCensusTractDetails : false
     } as MapViewState;
 
     constructor(props: MapViewProps){
         super(props);
         this.toggleDisplayState=this.toggleDisplayState.bind(this);
         this.handleRouteOverlayUpdate = this.handleRouteOverlayUpdate.bind(this);
-        routes["bus-routes"].forEach((route) => {
-            this.state.displayedRoutes.push({
-                name : route,
-                visible : false,
-                data : {},
-                type : "bus"
-            } as TransitRoute);
-        });
-        routes["train-routes"].forEach((route) => {
-            this.state.displayedRoutes.push({
-                name : route,
-                visible : false,
-                data : {},
-                type : "train"
-            });
-        });
+        this.onEachCensusFeature=this.onEachCensusFeature.bind(this);
     }
 
     regionGeoJSONStyle(feature : Feature) {
@@ -95,8 +87,32 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
     }
 
     onEachCensusFeature(feature : Feature, layer : Layer) {
-        const popupContent = ` <Popup><p>${feature.properties.NAMELSAD10}</pre></p></Popup>`;
+        const popupContent = `
+            <Popup>
+                <p>${feature.properties.NAMELSAD10}</pre></p>
+            </Popup>`;
         layer.bindPopup(popupContent);
+        layer.on({
+            click: () => {
+                let censusTract = polygon((feature as any).geometry.coordinates);
+                const intersectingRoutes = [] as TransitRoute[];
+                this.state.displayedRoutes.forEach((route) => {
+                    let thisRoute = lineString(((route.data as any).features[0] as any).geometry.coordinates);
+                    const intersectionValue = lineIntersect(thisRoute, censusTract as any);
+                    if(intersectionValue.features.length > 0){
+                        //This route intersects the census tract, push it to the array of intersecting routes
+                        intersectingRoutes.push(route);
+                        console.log("Census tract " + feature.properties.NAMELSAD10 + " intersects with " + route.name);
+                    }
+                });
+                this.state.selectedCensusTract = {
+                    name : feature.properties.NAMELSAD10,
+                    feature : feature,
+                    intersectingRoutes : intersectingRoutes
+                }
+                this.setState({showCensusTractDetails : true});
+            }
+        });
     }
 
     onLimitFeature(feature : Feature, layer : Layer) {
@@ -104,7 +120,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         layer.bindPopup(popupContent);
     }
 
-    toggleDisplayState(key: string, value: boolean) {
+    async toggleDisplayState(key: string, value: boolean) {
         if (key == "regions") {
             this.setState({
                 displayRegion: value,
@@ -114,9 +130,19 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                 displayTransit: value
             })
         } else if (key == "census"){
-            this.setState({
-                displayCensusTract: value
-            });
+            if(value){
+                fetch('/ui/assets/PHL_CENSUS.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        this.setState({
+                            censusTractData : data
+                        });
+                    });
+            } else {
+                this.setState({
+                    censusTractData : null
+                });
+            }
         }
     }
 
@@ -124,21 +150,61 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         for(let i : number = 0; i < this.state.displayedRoutes.length; i++) {
             let thisRoute = this.state.displayedRoutes[i];
             if(thisRoute.name == routeName){
-                fetch('/assets/routes/' + thisRoute.name + '.geojson')
-                    .then(response => response.json())
-                    .then( data => {
-                        let displayedRoutes = [...this.state.displayedRoutes];
-                        displayedRoutes[i] = {
-                            name : routeName,
-                            visible : newIsVisible,
-                            data : data,
-                            type : thisRoute.type
-                        } as TransitRoute;
-                        this.setState({displayedRoutes : displayedRoutes})
-                        console.log(this.state.displayedRoutes);
-                    });
+                let displayedRoutes = [...this.state.displayedRoutes];
+                displayedRoutes[i] = {
+                    name : routeName,
+                    visible : newIsVisible,
+                    data : thisRoute.data,
+                    type : thisRoute.type
+                } as TransitRoute;
+                this.setState({displayedRoutes : displayedRoutes})
             }
         }
+    }
+
+    componentDidMount() {
+        this.fetchAllTransitRoutes().then(() => {
+            console.log("done loadin routz");
+        });
+    }
+
+    async fetchAllTransitRoutes(): Promise<void> {
+        routes["bus-routes"].forEach((value) => {
+            fetch('/ui/assets/routes/' + value + '.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    this.state.displayedRoutes.push({
+                        name : value,
+                        visible : false,
+                        data : data,
+                        type : 'bus'
+                    } as TransitRoute );
+                });
+        });
+        routes["train-routes"].forEach((value) => {
+            fetch('/ui/assets/routes/' + value + '.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    this.state.displayedRoutes.push({
+                        name : value,
+                        visible : false,
+                        data : data,
+                        type : 'train'
+                    } as TransitRoute );
+                });
+        });
+    }
+
+    showCensusTractDetails(){
+        this.setState({
+            showCensusTractDetails : true
+        });
+    }
+
+    hideCensusTractDetails(){
+        this.setState({
+            showCensusTractDetails : false
+        });
     }
 
     render() {
@@ -168,15 +234,24 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                 displayedRoutes.push(transitLineOverlay);
             }
         }
+        let censusTractOverlay : any;
+        if(this.state.censusTractData){
+            console.debug(this.state.censusTractData);
+            censusTractOverlay =
+                <GeoJSON data={this.state.censusTractData}
+                         style={this.regionGeoJSONStyle}
+                         onEachFeature={this.onEachCensusFeature}
+                />
+        }
         return (
             <Container fluid>
                 <Row className="mt-sm-4">
                     <Col sm={9}>
-                        <LeafletMap center={position} zoom = {mapDefault.zoom}>
+                        <LeafletMap center={position} zoom = {mapDefault.zoom} style={{height: "80vh"}}>
                             <TileLayer attribution='&amp;copy <a href="http://osm.org/copyright">OpenStreetMaps</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
                             <GeoJSON data={limitData as any} style={this.limitGeoJSONStyle} onEachFeature={this.onLimitFeature}/>
                             { this.state.displayRegion && <GeoJSON data={regionData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachRegionFeature} /> }
-                            { this.state.displayCensusTract && <GeoJSON data={censusData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachCensusFeature} /> }
+                            { this.state.censusTractData && censusTractOverlay }
                             { this.state.displayTransit && displayedRoutes }
                         </LeafletMap>
                     </Col>
@@ -184,6 +259,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                         <MapControls onDisplayChange={this.toggleDisplayState} onRouteOverlayChange={this.handleRouteOverlayUpdate} displayedRoutes={this.state.displayedRoutes}/>
                     </Col>
                 </Row>
+                { this.state.showCensusTractDetails && <CensusTractDetailModal show={this.state.showCensusTractDetails} onClose={() => { this.setState({showCensusTractDetails : false})} } censusTract={this.state.selectedCensusTract}/> }
             </Container>
         );
     }
