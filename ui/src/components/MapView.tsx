@@ -10,12 +10,14 @@ import * as routes from '../../assets/PHL_ROUTES.json';
 import {polygon, lineString, lineIntersect} from '@turf/turf';
 import {CensusTractDetailModal} from "./CensusTractDetailModal";
 import {CensusTract} from "../types/CensusTract";
+import {TransitStop} from "../types/TransitStop";
 
 export interface TransitRoute {
     name : string,
     data : object,
     visible : boolean,
-    type : string
+    type : string,
+    stops? : TransitStop[]
 }
 
 export interface MapViewProps {}
@@ -245,7 +247,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
             <Container fluid>
                 <Row className="mt-sm-4">
                     <Col sm={9}>
-                        <LeafletMap center={position} zoom = {mapDefault.zoom}>
+                        <LeafletMap center={position} zoom = {mapDefault.zoom} style={{height: "80vh"}}>
                             <TileLayer attribution='&amp;copy <a href="http://osm.org/copyright">OpenStreetMaps</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
                             <GeoJSON data={limitData as any} style={this.limitGeoJSONStyle} onEachFeature={this.onLimitFeature}/>
                             { this.state.displayRegion && <GeoJSON data={regionData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachRegionFeature} /> }
@@ -257,9 +259,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                         <MapControls onDisplayChange={this.toggleDisplayState} onRouteOverlayChange={this.handleRouteOverlayUpdate} displayedRoutes={this.state.displayedRoutes}/>
                     </Col>
                 </Row>
-                {
-                    this.state.showCensusTractDetails && <CensusTractDetailModal onClose={() => { this.setState({showCensusTractDetails : false})}} censusTract={this.state.selectedCensusTract}/>
-                }
+                { this.state.showCensusTractDetails && <CensusTractDetailModal show={this.state.showCensusTractDetails} onClose={() => { this.setState({showCensusTractDetails : false})} } censusTract={this.state.selectedCensusTract}/> }
             </Container>
         );
     }
