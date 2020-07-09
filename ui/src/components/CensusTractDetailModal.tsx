@@ -145,7 +145,7 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
                         <Col sm={9}>
                             {
                                 this.state.modalReady &&
-                            <LeafletMap center={this.state.featureBounds} zoom={12} style={{height: "50vh"}}
+                            <LeafletMap center={this.state.featureBounds} zoom={13} style={{height: "80vh"}}
                                         ref={this.mapRef}>
                                 <TileLayer
                                     attribution='&amp;copy <a href="http://osm.org/copyright">OpenStreetMaps</a> contributors'
@@ -174,7 +174,7 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
                                     { intersectingRoutesSwitch }
                                 </Form>
                             </Container>
-                            <Container fluid>
+                            <Container fluid className="mt-sm-4">
                                 <h5>Options: </h5>
                             </Container>
                             <Container fluid>
