@@ -8,7 +8,6 @@ import {latLng, Layer} from "leaflet";
 import {DisplayOverlaySwitch} from "./DisplayOverlaySwitch";
 import {createRef} from "react";
 import {bbox} from "@turf/turf";
-import {ExternalDataManager} from "../managers/ExternalDataManager";
 import {TransitStop} from "../types/TransitStop";
 
 
