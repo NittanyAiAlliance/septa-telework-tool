@@ -1,3 +1,10 @@
-**/.idea
-**/node_modules/.cache/terser-webpack-plugin
-ui/dist/main.js.map
+
+ui/.idea/deployment.xml
+ui/.idea/dictionaries/jds6294.xml
+ui/.idea/jsLibraryMappings.xml
+ui/.idea/misc.xml
+ui/.idea/modules.xml
+ui/.idea/ui.iml
+ui/.idea/vcs.xml
+ui/.idea/webServers.xml
+ui/.idea/workspace.xml
