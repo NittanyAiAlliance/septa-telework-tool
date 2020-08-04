@@ -8,8 +8,7 @@ export class Footer extends React.Component<FooterProps, {}> {
         return (
             <Jumbotron>
                 <Container fluid className="mb-sm-5">
-                    <h6>Footer placeholder</h6>
-                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur eu interdum sem. Mauris sit amet tempus libero, at feugiat nulla.</p>
+                    <h6>&nbsp;</h6>
                 </Container>
             </Jumbotron>
         );
