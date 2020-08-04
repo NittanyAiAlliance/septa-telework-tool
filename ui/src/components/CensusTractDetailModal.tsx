@@ -23,7 +23,8 @@ export interface CensusTractDetailModalState {
     show : boolean,
     featureBounds : any //LatLngTuple,
     modalReady : boolean,
-    showStops : boolean
+    showStops : boolean,
+    details : any //Detailed results csv data
 }
 
 export class CensusTractDetailModal extends React.Component<CensusTractDetailModalProps, CensusTractDetailModalState> {
@@ -41,7 +42,8 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
             show : this.props.show,
             featureBounds : {lat : latMid, lng : lngMid},
             modalReady : false,
-            showStops : false
+            showStops : false,
+            details : null
         }
     }
 
@@ -49,7 +51,7 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
         for (const thisRoute of this.state.displayedRoutes) {
             let i: number = this.state.displayedRoutes.indexOf(thisRoute);
             if(thisRoute.name == route){
-                fetch('/ui/assets/stops/' + thisRoute.name + '.json')
+                fetch('/assets/stops/' + thisRoute.name + '.json')
                     .then(response => response.json())
                     .then(data => {
                         const stops : TransitStop[] = [];
@@ -84,6 +86,7 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
     componentDidMount() {
         //Leaflet cannot properly render the map, so, we wait 200MS, which is plenty of time for the modal to load, then we load the map
         this.renderMap();
+        this.loadDetailedResults()
     }
 
     renderMap(){
@@ -93,6 +96,18 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
                 modalReady : true
             });
         }, 200);
+    }
+
+    loadDetailedResults(){
+        fetch('/assets/data/extended-data.json')
+            .then(response => response.json())
+            .then(data => {
+                data.forEach((val : any) => {
+                    if(val.name == this.props.censusTract.name){
+                        this.setState({details : val});
+                    }
+                });
+            });
     }
 
     render() {
@@ -106,7 +121,7 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
                         data={route.data as any}
                         style={(feature : Feature) => {
                             return {
-                                color : feature.properties.stroke,
+                                color : "#FF0000",
                                 weight : 5
                             }
                         }}
@@ -185,7 +200,26 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
                         </Col>
                     </Row>
                     <Row className="mt-sm-4">
-
+                        <Container>
+                            <h3>Details<hr/></h3>
+                            { this.state.details != null &&
+                                <div>
+                                    <p>Population 16 years and over: {this.state.details.adult_population}</p>
+                                    <p>Agriculture, Forestry, Fishing, Hunting, and Mining: {this.state.details.agriculture}</p>
+                                    <p>Construction: {this.state.details.construction}</p>
+                                    <p>Manufacturing: {this.state.details.manufacturing}</p>
+                                    <p>Wholesale Trade: {this.state.details.wholesale}</p>
+                                    <p>Retail Trade: {this.state.details.retail}</p>
+                                    <p>Transportation, Warehousing, and Utilities: {this.state.details.transportation}</p>
+                                    <p>Information: {this.state.details.information}</p>
+                                    <p>Finance, Insurance, Real Estate, Rental, and Leasing: {this.state.details.professional}</p>
+                                    <p>Educational Services, Health Care, and Social Assistance: {this.state.details.social_services}</p>
+                                    <p>Arts, Entertainment, Recreation, and Food Service: {this.state.details.arts}</p>
+                                    <p>Other: {this.state.details.other}</p>
+                                    <p><strong>Prediction: {this.state.details.prediction}</strong></p>
+                                </div>
+                            }
+                        </Container>
                     </Row>
                 </Modal.Body>
             </Modal>
