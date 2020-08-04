@@ -7,7 +7,7 @@ import {Layer} from "leaflet";
 import {Col, Container, Row, Modal} from "react-bootstrap";
 import {MapControls} from "./MapControls";
 import * as routes from '../../assets/PHL_ROUTES.json';
-import {polygon, lineString, lineIntersect} from '@turf/turf';
+import {polygon, lineString, lineIntersect, multiLineString} from '@turf/turf';
 import {CensusTractDetailModal} from "./CensusTractDetailModal";
 import {CensusTract} from "../types/CensusTract";
 import {TransitStop} from "../types/TransitStop";
@@ -25,9 +25,11 @@ export interface MapViewState {
     displayRegion : boolean,
     displayTransit: boolean,
     censusTractData : any,
+    suburbsTractData : any,
     displayedRoutes : TransitRoute[],
     showCensusTractDetails : boolean,
-    selectedCensusTract : CensusTract
+    selectedCensusTract : CensusTract,
+    riskValues : any
 }
 
 
@@ -36,8 +38,10 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         displayRegion: false,
         displayTransit : true,
         censusTractData : null,
+        suburbsTractData : null,
         displayedRoutes : [] as TransitRoute[],
-        showCensusTractDetails : false
+        showCensusTractDetails : false,
+        riskValues : null
     } as MapViewState;
 
     constructor(props: MapViewProps){
@@ -45,6 +49,8 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         this.toggleDisplayState=this.toggleDisplayState.bind(this);
         this.handleRouteOverlayUpdate = this.handleRouteOverlayUpdate.bind(this);
         this.onEachCensusFeature=this.onEachCensusFeature.bind(this);
+        this.riskValueToColor=this.riskValueToColor.bind(this);
+        this.tractHeatStyle=this.tractHeatStyle.bind(this);
     }
 
     regionGeoJSONStyle(feature : Feature) {
@@ -56,9 +62,41 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         }
     }
 
+    tractHeatStyle(feature : Feature) {
+        return {
+            fillColor : this.riskValueToColor(this.state.riskValues[feature.properties.NAMELSAD10 + ", Philadelphia County, Pennsylvania"], 30,100),
+            color: '#1f2021',
+            weight : 2,
+            fillOpacity: 0.6
+        }
+    }
+
+    riskValueToColor(perc : number, min : number, max : number) {
+        perc = 1 - perc;
+        var base = (max - min);
+
+        perc = perc * 100;
+
+        if (base == 0) { perc = 100; }
+        else {
+            perc = (perc - min) / base * 100;
+        }
+        var r, g, b = 0;
+        if (perc < 50) {
+            r = 255;
+            g = Math.round(5.1 * perc);
+        }
+        else {
+            g = 255;
+            r = Math.round(510 - 5.10 * perc);
+        }
+        var h = r * 0x10000 + g * 0x100 + b * 0x1;
+        return '#' + ('000000' + h.toString(16)).slice(-6);
+    }
+
     transitGeoJSONStyle(feature : Feature){
         return {
-            color : feature.properties.stroke,
+            color : '#FF0000',
             weight : 5
         }
     }
@@ -97,7 +135,8 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                 let censusTract = polygon((feature as any).geometry.coordinates);
                 const intersectingRoutes = [] as TransitRoute[];
                 this.state.displayedRoutes.forEach((route) => {
-                    let thisRoute = lineString(((route.data as any).features[0] as any).geometry.coordinates);
+                    console.log(route);
+                    let thisRoute = multiLineString((route.data as any).geometry.coordinates);
                     const intersectionValue = lineIntersect(thisRoute, censusTract as any);
                     if(intersectionValue.features.length > 0){
                         //This route intersects the census tract, push it to the array of intersecting routes
@@ -131,7 +170,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
             })
         } else if (key == "census"){
             if(value){
-                fetch('/ui/assets/PHL_CENSUS.json')
+                fetch('/assets/PHL_CENSUS.json')
                     .then(response => response.json())
                     .then(data => {
                         this.setState({
@@ -141,6 +180,20 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
             } else {
                 this.setState({
                     censusTractData : null
+                });
+            }
+        } else if(key == "suburbs"){
+            if(value){
+                fetch('/assets/suburbs.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        this.setState({
+                            suburbsTractData : data
+                        });
+                    });
+            } else {
+                this.setState({
+                    suburbsTractData : null
                 });
             }
         }
@@ -166,11 +219,16 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         this.fetchAllTransitRoutes().then(() => {
             console.log("done loadin routz");
         });
+        fetch('/assets/data/data.json')
+            .then(response => response.json())
+            .then(data => {
+                this.setState({riskValues : data});
+            });
     }
 
     async fetchAllTransitRoutes(): Promise<void> {
         routes["bus-routes"].forEach((value) => {
-            fetch('/ui/assets/routes/' + value + '.geojson')
+            fetch('/assets/routes/' + value + '.geojson')
                 .then(response => response.json())
                 .then(data => {
                     this.state.displayedRoutes.push({
@@ -182,7 +240,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                 });
         });
         routes["train-routes"].forEach((value) => {
-            fetch('/ui/assets/routes/' + value + '.geojson')
+            fetch('/assets/routes/' + value + '.geojson')
                 .then(response => response.json())
                 .then(data => {
                     this.state.displayedRoutes.push({
@@ -239,9 +297,17 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
             console.debug(this.state.censusTractData);
             censusTractOverlay =
                 <GeoJSON data={this.state.censusTractData}
-                         style={this.regionGeoJSONStyle}
+                         style={this.tractHeatStyle}
                          onEachFeature={this.onEachCensusFeature}
                 />
+        }
+        let suburbsOverlay : any;
+        if(this.state.suburbsTractData){
+            suburbsOverlay =
+                <GeoJSON data={this.state.suburbsTractData}
+                         style={this.tractHeatStyle}
+                         onEachFeature={this.onEachCensusFeature}
+                         />
         }
         return (
             <Container fluid>
@@ -252,6 +318,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                             <GeoJSON data={limitData as any} style={this.limitGeoJSONStyle} onEachFeature={this.onLimitFeature}/>
                             { this.state.displayRegion && <GeoJSON data={regionData as any} style={this.regionGeoJSONStyle} onEachFeature={this.onEachRegionFeature} /> }
                             { this.state.censusTractData && censusTractOverlay }
+                            { this.state.suburbsTractData && suburbsOverlay }
                             { this.state.displayTransit && displayedRoutes }
                         </LeafletMap>
                     </Col>
