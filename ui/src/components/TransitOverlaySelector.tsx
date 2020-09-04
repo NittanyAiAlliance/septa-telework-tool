@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Button, Modal, Container } from 'react-bootstrap';
+import { Button, Modal, Container, Row, Col } from 'react-bootstrap';
 import {DisplayOverlaySwitch} from "./DisplayOverlaySwitch";
 import {TransitRoute} from "./MapView";
 import {GeoJSON} from "react-leaflet";
@@ -37,14 +37,16 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
         console.log(this.props.displayedRoutes.length);
         const busRoutes = [];
         const trainRoutes = [];
+        const regionalRailRoutes = [];
         for(const [index, value] of this.props.displayedRoutes.entries()){
-            const routeDisplaySwitch = <DisplayOverlaySwitch title={value.name} name={value.name} onChange={this.handleUpdateRoute} checked={value.visible} />
+            const routeDisplaySwitch = <DisplayOverlaySwitch title={value.name.replace('_', "/")} name={value.name} onChange={this.handleUpdateRoute} checked={value.visible} />
             if(value.type == "bus"){
                 busRoutes.push(routeDisplaySwitch);
             } else if(value.type == "train"){
                 trainRoutes.push(routeDisplaySwitch);
+            } else if(value.type == "Regional Rail"){
+                regionalRailRoutes.push(routeDisplaySwitch);
             }
-
         }
         return (
             <div>
@@ -56,6 +58,11 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
                         <Modal.Title>Select Transit Route Overlays</Modal.Title>
                     </Modal.Header>
                     <Modal.Body>
+                        <Row>
+                            <Col>
+
+                            </Col>
+                        </Row>
                         <Container fluid>
                             <h1>Bus Routes:</h1>
                             { busRoutes }
@@ -63,6 +70,10 @@ export class TransitOverlaySelector extends React.Component<TransitOverlayModalP
                         <Container fluid>
                             <h2>Train Routes:</h2>
                             { trainRoutes }
+                        </Container>
+                        <Container fluid>
+                            <h2>Regional Rail Routes:</h2>
+                            {regionalRailRoutes}
                         </Container>
                     </Modal.Body>
                 </Modal>

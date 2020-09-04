@@ -11,13 +11,15 @@ import {polygon, lineString, lineIntersect, multiLineString} from '@turf/turf';
 import {CensusTractDetailModal} from "./CensusTractDetailModal";
 import {CensusTract} from "../types/CensusTract";
 import {TransitStop} from "../types/TransitStop";
+import { TransitLineDetailModal } from './TransitLineDetailModal';
 
 export interface TransitRoute {
     name : string,
     data : object,
     visible : boolean,
     type : string,
-    stops? : TransitStop[]
+    stops? : TransitStop[],
+    intersectingTracts? : CensusTract[];
 }
 
 export interface MapViewProps {}
@@ -28,7 +30,9 @@ export interface MapViewState {
     suburbsTractData : any,
     displayedRoutes : TransitRoute[],
     showCensusTractDetails : boolean,
+    showLineDetails : boolean,
     selectedCensusTract : CensusTract,
+    selectedServiceLine : TransitRoute
     riskValues : any
 }
 
@@ -41,6 +45,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         suburbsTractData : null,
         displayedRoutes : [] as TransitRoute[],
         showCensusTractDetails : false,
+        showLineDetails : false,
         riskValues : null
     } as MapViewState;
 
@@ -51,6 +56,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         this.onEachCensusFeature=this.onEachCensusFeature.bind(this);
         this.riskValueToColor=this.riskValueToColor.bind(this);
         this.tractHeatStyle=this.tractHeatStyle.bind(this);
+        this.suburbTractHeatStyle=this.suburbTractHeatStyle.bind(this);
     }
 
     regionGeoJSONStyle(feature : Feature) {
@@ -64,7 +70,17 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
 
     tractHeatStyle(feature : Feature) {
         return {
-            fillColor : this.riskValueToColor(this.state.riskValues[feature.properties.NAMELSAD10 + ", Philadelphia County, Pennsylvania"], 30,100),
+            fillColor : this.riskValueToColor(this.state.riskValues[feature.properties.NAME10], 30,100),
+            color: '#1f2021',
+            weight : 2,
+            fillOpacity: 0.6
+        }
+    }
+
+    suburbTractHeatStyle(feature : Feature){
+        let tractName = feature.properties.NAMELSAD10.replace("Census Tract ", "") as string;
+        return {
+            fillColor : this.riskValueToColor(this.state.riskValues[tractName], 50, 100),
             color: '#1f2021',
             weight : 2,
             fillOpacity: 0.6
@@ -120,7 +136,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
     }
 
     onEachTransitLineFeature(feature : Feature, layer : Layer) {
-        const popupContent = ` <Popup><p>Transit Line : ${feature.properties.LINE_NAME}<pre/></p></Popup>`;
+        const popupContent = ` <Popup><p>Transit Line : ${feature.properties.LINE_NAME}<pre/></p><Button onclick={() => { this.lineSelected(feature)}</Button></Popup>`;
         layer.bindPopup(popupContent);
     }
 
@@ -135,13 +151,15 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                 let censusTract = polygon((feature as any).geometry.coordinates);
                 const intersectingRoutes = [] as TransitRoute[];
                 this.state.displayedRoutes.forEach((route) => {
-                    console.log(route);
-                    let thisRoute = multiLineString((route.data as any).geometry.coordinates);
-                    const intersectionValue = lineIntersect(thisRoute, censusTract as any);
-                    if(intersectionValue.features.length > 0){
-                        //This route intersects the census tract, push it to the array of intersecting routes
-                        intersectingRoutes.push(route);
-                        console.log("Census tract " + feature.properties.NAMELSAD10 + " intersects with " + route.name);
+                    try {
+                        let thisRoute = multiLineString((route.data as any).geometry.coordinates);
+                        const intersectionValue = lineIntersect(thisRoute, censusTract as any);
+                        if(intersectionValue.features.length > 0){
+                            //This route intersects the census tract, push it to the array of intersecting routes
+                            intersectingRoutes.push(route);
+                        }
+                    } catch (ex){
+
                     }
                 });
                 this.state.selectedCensusTract = {
@@ -203,7 +221,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         for(let i : number = 0; i < this.state.displayedRoutes.length; i++) {
             let thisRoute = this.state.displayedRoutes[i];
             if(thisRoute.name == routeName){
-                let displayedRoutes = [...this.state.displayedRoutes];
+                let displayedRoutes = this.state.displayedRoutes.splice(0);
                 displayedRoutes[i] = {
                     name : routeName,
                     visible : newIsVisible,
@@ -224,6 +242,8 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
             .then(data => {
                 this.setState({riskValues : data});
             });
+        this.toggleDisplayState("census", true);
+        this.toggleDisplayState("suburbs", true);
     }
 
     async fetchAllTransitRoutes(): Promise<void> {
@@ -249,6 +269,18 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                         data : data,
                         type : 'train'
                     } as TransitRoute );
+                });
+        });
+        routes["regional-rail"].forEach((value) => {
+            fetch('/assets/routes/' + value + '.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    this.state.displayedRoutes.push({
+                        name : value,
+                        visible : false,
+                        data : data,
+                        type : 'Regional Rail'
+                    } as TransitRoute);
                 });
         });
     }
@@ -287,6 +319,42 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                                     <h4 class="text-center">${value.name}</h4>
                                 </Popup>`;
                             layer.bindPopup(popupContent);
+                            layer.on({
+                                click: () => {
+                                    let serviceLine = multiLineString((feature as any).geometry.coordinates);
+                                    const intersectingTracts = [] as CensusTract[];
+                                    this.state.censusTractData.features.forEach((tract : any) => {
+                                        try{
+                                            let thisCensusTract = polygon((tract as any).geometry.coordinates);
+                                            const intersectionValue = lineIntersect(serviceLine, thisCensusTract as any);
+                                            if(intersectionValue.features.length > 0){
+                                                intersectingTracts.push({
+                                                    feature: tract,
+                                                    name: tract.properties.NAMELSAD10
+                                                } as CensusTract);
+                                            }
+                                        } catch(ex){
+                                            console.log(tract);
+                                        }
+                                    });
+                                    this.state.suburbsTractData.features.forEach((tract : any) => {
+                                        try{
+                                            let thisCensusTract = polygon((tract as any).geometry.coordinates);
+                                            const intersectionValue = lineIntersect(serviceLine, thisCensusTract as any);
+                                            if(intersectionValue.features.length > 0){
+                                                intersectingTracts.push({
+                                                    feature: tract,
+                                                    name: tract.properties.NAMELSAD10
+                                                } as CensusTract);
+                                            }
+                                        } catch(ex){
+                                            console.log(tract);
+                                        }
+                                    })
+                                    value.intersectingTracts = intersectingTracts;
+                                    this.setState({showLineDetails : true, selectedServiceLine : value});
+                                }
+                            })
                         }}
                     />
                 displayedRoutes.push(transitLineOverlay);
@@ -294,7 +362,6 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         }
         let censusTractOverlay : any;
         if(this.state.censusTractData){
-            console.debug(this.state.censusTractData);
             censusTractOverlay =
                 <GeoJSON data={this.state.censusTractData}
                          style={this.tractHeatStyle}
@@ -305,7 +372,7 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
         if(this.state.suburbsTractData){
             suburbsOverlay =
                 <GeoJSON data={this.state.suburbsTractData}
-                         style={this.tractHeatStyle}
+                         style={this.suburbTractHeatStyle}
                          onEachFeature={this.onEachCensusFeature}
                          />
         }
@@ -326,7 +393,11 @@ export class MapView extends React.Component<MapViewProps, MapViewState> {
                         <MapControls onDisplayChange={this.toggleDisplayState} onRouteOverlayChange={this.handleRouteOverlayUpdate} displayedRoutes={this.state.displayedRoutes}/>
                     </Col>
                 </Row>
+                <Row className="mt-sm-4">
+                    <p>Note: Heat map represents the risk for census tract to have its residents convert to telework. The "hotter" (or more red) a census tract is, the more likely its residents are to telework.</p>
+                </Row>
                 { this.state.showCensusTractDetails && <CensusTractDetailModal show={this.state.showCensusTractDetails} onClose={() => { this.setState({showCensusTractDetails : false})} } censusTract={this.state.selectedCensusTract}/> }
+                { this.state.showLineDetails && <TransitLineDetailModal show={this.state.showLineDetails} onClose={() => {this.setState({showLineDetails : false})}} transitLine={this.state.selectedServiceLine} /> }
             </Container>
         );
     }

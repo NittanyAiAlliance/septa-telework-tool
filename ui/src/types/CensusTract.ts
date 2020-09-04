@@ -3,5 +3,7 @@ import {TransitRoute} from "../components/MapView";
 export interface CensusTract {
     name : string,
     feature : any,
-    intersectingRoutes? : TransitRoute[]
+    intersectingRoutes? : TransitRoute[],
+    riskValue? : number,
+    selected? : boolean
 }

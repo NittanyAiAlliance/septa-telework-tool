@@ -1,14 +1,16 @@
 import * as React from 'react';
-import {Modal, Row, Col, Container, Form} from 'react-bootstrap';
+import {Modal, Row, Col, Container, Form, Table} from 'react-bootstrap';
 import {TransitRoute} from "./MapView";
 import {GeoJSON, Map as LeafletMap, Marker, Popup, TileLayer} from "react-leaflet";
 import {CensusTract} from "../types/CensusTract";
 import {Feature} from "geojson";
-import {latLng, Layer} from "leaflet";
+import {Layer} from "leaflet";
 import {DisplayOverlaySwitch} from "./DisplayOverlaySwitch";
 import {createRef} from "react";
 import {bbox} from "@turf/turf";
 import {TransitStop} from "../types/TransitStop";
+import {Simulate} from "react-dom/test-utils";
+import error = Simulate.error;
 
 
 export interface CensusTractDetailModalProps {
@@ -51,28 +53,46 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
         for (const thisRoute of this.state.displayedRoutes) {
             let i: number = this.state.displayedRoutes.indexOf(thisRoute);
             if(thisRoute.name == route){
-                fetch('/assets/stops/' + thisRoute.name + '.json')
-                    .then(response => response.json())
-                    .then(data => {
-                        const stops : TransitStop[] = [];
-                        for (const stop of data) {
-                            stops.push({
-                                route : thisRoute.name,
-                                lat : stop.lat,
-                                lng : stop.lng,
-                                name : stop.stopname
-                            } as TransitStop );
-                        }
+                try {
+                    fetch('/assets/stops/' + thisRoute.name + '.json')
+                        .then(response => response.json())
+                        .then(data => {
+                            const stops : TransitStop[] = [];
+                            try{
+                                for (const stop of data) {
+                                    stops.push({
+                                        route : thisRoute.name,
+                                        lat : stop.lat,
+                                        lng : stop.lng,
+                                        name : stop.stopname
+                                    } as TransitStop );
+                                }
+                            } catch(ex) {
+
+                            }
+                            let displayedRoutes = [...this.state.displayedRoutes];
+                            displayedRoutes[i] = {
+                                name : route,
+                                visible : isVisible,
+                                data : thisRoute.data,
+                                type : thisRoute.type,
+                                stops : stops ? stops : []
+                            } as TransitRoute;
+                            this.setState({displayedRoutes : displayedRoutes});
+                        }).catch((error) => {
                         let displayedRoutes = [...this.state.displayedRoutes];
                         displayedRoutes[i] = {
                             name : route,
                             visible : isVisible,
                             data : thisRoute.data,
                             type : thisRoute.type,
-                            stops : stops
+                            stops : []
                         } as TransitRoute;
                         this.setState({displayedRoutes : displayedRoutes});
-                });
+                    });
+                } catch (ex) {
+
+                }
             }
         }
     }
@@ -200,24 +220,47 @@ export class CensusTractDetailModal extends React.Component<CensusTractDetailMod
                         </Col>
                     </Row>
                     <Row className="mt-sm-4">
-                        <Container>
-                            <h3>Details<hr/></h3>
-                            { this.state.details != null &&
-                                <div>
-                                    <p>Population 16 years and over: {this.state.details.adult_population}</p>
-                                    <p>Agriculture, Forestry, Fishing, Hunting, and Mining: {this.state.details.agriculture}</p>
-                                    <p>Construction: {this.state.details.construction}</p>
-                                    <p>Manufacturing: {this.state.details.manufacturing}</p>
-                                    <p>Wholesale Trade: {this.state.details.wholesale}</p>
-                                    <p>Retail Trade: {this.state.details.retail}</p>
-                                    <p>Transportation, Warehousing, and Utilities: {this.state.details.transportation}</p>
-                                    <p>Information: {this.state.details.information}</p>
-                                    <p>Finance, Insurance, Real Estate, Rental, and Leasing: {this.state.details.professional}</p>
-                                    <p>Educational Services, Health Care, and Social Assistance: {this.state.details.social_services}</p>
-                                    <p>Arts, Entertainment, Recreation, and Food Service: {this.state.details.arts}</p>
-                                    <p>Other: {this.state.details.other}</p>
-                                    <p><strong>Prediction: {this.state.details.prediction}</strong></p>
-                                </div>
+                        <Container fluid style={{overflowX: "scroll"}}>
+                            {
+                                this.state.details &&
+                                    <Table bordered>
+                                        <thead>
+                                            <tr>
+                                                <th>Telework Risk Factor</th>
+                                                <th>Adult Population</th>
+                                                <th>Agriculture</th>
+                                                <th>Construction</th>
+                                                <th>Manufacturing</th>
+                                                <th>Wholesale Trade</th>
+                                                <th>Retail Trade</th>
+                                                <th>Transportation</th>
+                                                <th>Information</th>
+                                                <th>Financial Services</th>
+                                                <th>Professional/Administrative</th>
+                                                <th>Healthcare and Education</th>
+                                                <th>Arts and Entertainment</th>
+                                                <th>Other</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>{this.state.details.prediction}</strong></td>
+                                                <td>{this.state.details.adult_population}</td>
+                                                <td>{this.state.details.agriculture}</td>
+                                                <td>{this.state.details.construction}</td>
+                                                <td>{this.state.details.manufacturing}</td>
+                                                <td>{this.state.details.wholesale}</td>
+                                                <td>{this.state.details.retail}</td>
+                                                <td>{this.state.details.transportation}</td>
+                                                <td>{this.state.details.information}</td>
+                                                <td>{this.state.details.finance}</td>
+                                                <td>{this.state.details.professional}</td>
+                                                <td>{this.state.details.social_services}</td>
+                                                <td>{this.state.details.arts}</td>
+                                                <td>{this.state.details.other}</td>
+                                            </tr>
+                                        </tbody>
+                                    </Table>
                             }
                         </Container>
                     </Row>
